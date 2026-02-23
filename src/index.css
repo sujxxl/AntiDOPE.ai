@@ -1,0 +1,112 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+
+@import "tailwindcss";
+
+@theme {
+  --font-family-sans: 'Inter', sans-serif;
+  --font-family-mono: 'Space Mono', monospace;
+
+  --color-glass-black: #0A0A0A;
+  --color-glass-white: rgba(255, 255, 255, 0.8);
+  --color-glass-stroke: rgba(255, 255, 255, 0.1);
+  --color-glass-highlight: rgba(255, 255, 255, 0.05);
+  --color-risk-low: #00FFAB;
+  --color-risk-moderate: #FFD24D;
+  --color-risk-high: #FF4D4D;
+
+  --shadow-glow-low: 0 0 20px 0px rgba(0, 255, 171, 0.3);
+  --shadow-glow-moderate: 0 0 20px 0px rgba(255, 210, 77, 0.3);
+  --shadow-glow-high: 0 0 20px 0px rgba(255, 77, 77, 0.3);
+}
+
+@layer base {
+  @media print {
+    @page {
+      size: A4;
+      margin: 16mm;
+    }
+
+    * {
+      backdrop-filter: none !important;
+      filter: none !important;
+      text-shadow: none !important;
+      box-shadow: none !important;
+    }
+
+    body {
+      background-color: #fff !important;
+      color: #000 !important;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .bg-glass-black,
+    .bg-gradient-to-br,
+    .backdrop-blur-2xl,
+    .backdrop-blur-lg,
+    .backdrop-blur-sm {
+      background: #fff !important;
+    }
+
+    .no-print,
+    .no-print * {
+      display: none !important;
+    }
+
+    .printable-area {
+      display: block;
+    }
+
+    .print-container {
+      display: block !important;
+    }
+
+    .report-section {
+      background: #fff !important;
+      border: 1px solid #d1d5db !important;
+      box-shadow: none !important;
+      backdrop-filter: none !important;
+      margin-bottom: 2rem;
+      padding: 1.5rem;
+      page-break-inside: avoid;
+    }
+
+    .report-header {
+      color: #000 !important;
+      border-bottom: 2px solid #000;
+      padding-bottom: 0.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .recharts-wrapper {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+
+    .chart-crisp {
+      transform: translateZ(0);
+    }
+
+    .print-footer {
+      display: block !important;
+    }
+  }
+
+  body {
+    @apply bg-glass-black text-glass-white font-sans;
+    background-image: radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.05) 1px, transparent 0);
+    background-size: 2rem 2rem;
+  }
+
+  @keyframes ripple {
+    to {
+      transform: scale(4);
+      opacity: 0;
+    }
+  }
+
+  .animate-ripple {
+    transform: scale(0);
+    animation: ripple 600ms linear;
+  }
+}
