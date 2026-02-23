@@ -27,6 +27,11 @@ export default function RiskReportPage() {
         return <div className="text-white text-center text-2xl">Athlete report not available</div>;
     }
 
+    const primaryMetric = latestSession.modelOutputs.dataMetrics?.[0];
+    const secondaryMetric = latestSession.modelOutputs.dataMetrics?.[1] ?? primaryMetric;
+    const primaryLabel = primaryMetric ? `${primaryMetric.metric} (${primaryMetric.unit})` : 'Primary Metric';
+    const secondaryLabel = secondaryMetric ? `${secondaryMetric.metric} (${secondaryMetric.unit})` : 'Secondary Metric';
+
     return (
         <div className="printable-area space-y-8 print:text-black">
             <div className="flex items-center justify-between no-print">
@@ -82,10 +87,39 @@ export default function RiskReportPage() {
                             <YAxis yAxisId="right" orientation="right" stroke="#9ca3af" />
                             <Tooltip />
                             <Legend />
-                            <Line yAxisId="left" type="monotone" dataKey="hr" stroke="#00FFAB" strokeWidth={3} name="HR" dot={false} />
-                            <Line yAxisId="right" type="monotone" dataKey="acceleration" stroke="#FFD24D" strokeWidth={3} name="Acceleration" dot={false} />
+                            <Line yAxisId="left" type="monotone" dataKey="hr" stroke="#00FFAB" strokeWidth={3} name={primaryLabel} dot={false} />
+                            <Line yAxisId="right" type="monotone" dataKey="acceleration" stroke="#FFD24D" strokeWidth={3} name={secondaryLabel} dot={false} />
                         </LineChart>
                     </ResponsiveContainer>
+                </div>
+            </GlassCard>
+
+            <GlassCard className="report-section">
+                <h2 className="text-2xl font-bold text-glass-white report-header">Uploaded Dataset Metrics</h2>
+                <p className="text-stone-400 mb-4">Real metrics extracted from the uploaded session file and used for inference.</p>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                        <thead>
+                            <tr className="border-b border-glass-stroke">
+                                <th className="p-3 text-sm text-stone-400 uppercase">Metric</th>
+                                <th className="p-3 text-sm text-stone-400 uppercase">Unit</th>
+                                <th className="p-3 text-sm text-stone-400 uppercase">Mean</th>
+                                <th className="p-3 text-sm text-stone-400 uppercase">Min</th>
+                                <th className="p-3 text-sm text-stone-400 uppercase">Max</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {(latestSession.modelOutputs.dataMetrics ?? []).map((metric) => (
+                                <tr key={metric.metric} className="border-b border-glass-stroke/50 last:border-none">
+                                    <td className="p-3 text-white">{metric.metric}</td>
+                                    <td className="p-3 text-white">{metric.unit}</td>
+                                    <td className="p-3 text-white">{metric.mean}</td>
+                                    <td className="p-3 text-white">{metric.min}</td>
+                                    <td className="p-3 text-white">{metric.max}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
             </GlassCard>
 
@@ -127,7 +161,7 @@ export default function RiskReportPage() {
                 <h2 className="text-2xl font-bold text-glass-white report-header">Composite Risk Assessment</h2>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     <div>
-                        <h3 className="text-lg font-semibold text-white print:text-black mb-2">HR vs Acceleration Trend</h3>
+                        <h3 className="text-lg font-semibold text-white print:text-black mb-2">{primaryLabel} vs {secondaryLabel}</h3>
                         <div className="h-72 chart-crisp">
                             <ResponsiveContainer width="100%" height="100%">
                                 <LineChart data={latestSession.modelOutputs.hrAccelerationTrend}>
@@ -136,8 +170,8 @@ export default function RiskReportPage() {
                                     <YAxis yAxisId="left" stroke="#9ca3af" />
                                     <YAxis yAxisId="right" orientation="right" stroke="#9ca3af" />
                                     <Tooltip />
-                                    <Line yAxisId="left" type="monotone" dataKey="hr" stroke="#00FFAB" strokeWidth={3} />
-                                    <Line yAxisId="right" type="monotone" dataKey="acceleration" stroke="#FFD24D" strokeWidth={3} />
+                                    <Line yAxisId="left" type="monotone" dataKey="hr" stroke="#00FFAB" strokeWidth={3} name={primaryLabel} />
+                                    <Line yAxisId="right" type="monotone" dataKey="acceleration" stroke="#FFD24D" strokeWidth={3} name={secondaryLabel} />
                                 </LineChart>
                             </ResponsiveContainer>
                         </div>

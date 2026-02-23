@@ -97,7 +97,7 @@ export default function AthleteProfilePage() {
         </GlassCard>
 
         <GlassCard>
-          <h3 className="text-xl font-bold text-glass-white mb-4">Model Outputs Per Session</h3>
+          <h3 className="text-xl font-bold text-glass-white mb-4">Analysis Outputs Per Session</h3>
           <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
             {athlete.uploadSessions.map((session) => (
               <div key={session.sessionId} className="p-3 rounded-lg border border-white/10 bg-white/5">

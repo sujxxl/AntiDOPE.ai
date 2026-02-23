@@ -20,6 +20,13 @@ export interface UploadSession {
             score: number;
             level: RiskLevel;
         };
+        dataMetrics?: {
+            metric: string;
+            unit: string;
+            mean: number;
+            min: number;
+            max: number;
+        }[];
         hrAccelerationTrend: { name: string; hr: number; acceleration: number }[];
         anomalyVisualization: { feature: string; impact: number }[];
     };

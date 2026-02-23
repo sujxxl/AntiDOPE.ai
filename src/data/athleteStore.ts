@@ -108,7 +108,59 @@ export const createAthlete = (input: {
 
 export const generateAthleteId = () => `A-${Math.floor(100000 + Math.random() * 900000)}`;
 
-const buildInferenceFromDataset = (rows: Record<string, unknown>[]) => {
+const unitFromColumnName = (column: string) => {
+    const normalized = column.toLowerCase();
+
+    if (normalized.includes('%') || normalized.includes('percent')) {
+        return '%';
+    }
+
+    if (normalized.includes('hr') || normalized.includes('heart')) {
+        return 'bpm';
+    }
+
+    if (normalized.includes('acc') || normalized.includes('speed')) {
+        return 'm/s²';
+    }
+
+    if (normalized.includes('temp')) {
+        return '°C';
+    }
+
+    return 'value';
+};
+
+const numericColumnStats = (rows: Record<string, unknown>[], columns: string[]) => {
+    return columns
+        .map((column) => {
+            const values = rows
+                .map((row) => {
+                    const value = row[column];
+                    return typeof value === 'number' ? value : Number(value);
+                })
+                .filter((value) => Number.isFinite(value));
+
+            if (values.length === 0) {
+                return null;
+            }
+
+            const mean = values.reduce((acc, value) => acc + value, 0) / values.length;
+
+            return {
+                metric: column,
+                unit: unitFromColumnName(column),
+                mean: Number(mean.toFixed(2)),
+                min: Number(Math.min(...values).toFixed(2)),
+                max: Number(Math.max(...values).toFixed(2)),
+                values,
+            };
+        })
+        .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
+};
+
+const buildInferenceFromDataset = (rows: Record<string, unknown>[], columns: string[]) => {
+    const stats = numericColumnStats(rows, columns);
+
     const numericValues = rows.flatMap((row) =>
         Object.values(row)
             .map((value) => (typeof value === 'number' ? value : Number(value)))
@@ -123,17 +175,33 @@ const buildInferenceFromDataset = (rows: Record<string, unknown>[]) => {
     const level = levelFromScore(score);
     const confidence = clamp(0.7 + Math.min(rows.length, 200) / 1000, 0.72, 0.98);
 
+    const primaryMetric = stats[0];
+    const secondaryMetric = stats[1] ?? stats[0];
+
     const hrAccelerationTrend = Array.from({ length: 6 }).map((_, index) => ({
         name: `T${index + 1}`,
-        hr: Math.round(clamp(120 + index * 3 + avg * 0.1, 95, 190)),
-        acceleration: Number(clamp(3.9 - index * 0.2 + avg * 0.003, 1.5, 5).toFixed(2)),
+        hr: Number(
+            clamp(
+                primaryMetric?.values[index % primaryMetric.values.length] ?? (120 + index * 3 + avg * 0.1),
+                -99999,
+                99999
+            ).toFixed(2)
+        ),
+        acceleration: Number(
+            clamp(
+                secondaryMetric?.values[index % secondaryMetric.values.length] ?? (3.9 - index * 0.2 + avg * 0.003),
+                -99999,
+                99999
+            ).toFixed(2)
+        ),
     }));
 
-    const anomalyVisualization = [
-        { feature: 'HGB', impact: Number(clamp(0.2 + score / 250, 0.1, 0.7).toFixed(2)) },
-        { feature: 'RET%', impact: Number(clamp(0.15 + score / 300, 0.08, 0.6).toFixed(2)) },
-        { feature: 'OFF-Score', impact: Number(clamp(0.15 + score / 320, 0.05, 0.55).toFixed(2)) },
-    ];
+    const anomalyVisualization = (stats.length > 0 ? stats : columns.map((column) => ({ metric: column, mean: 1 })))
+        .slice(0, 5)
+        .map((entry, index) => ({
+            feature: entry.metric,
+            impact: Number(clamp((Number(entry.mean) / (avg || 1)) * 0.4 + (0.22 - index * 0.03), 0.08, 0.9).toFixed(2)),
+        }));
 
     return {
         score,
@@ -142,6 +210,11 @@ const buildInferenceFromDataset = (rows: Record<string, unknown>[]) => {
         efficiencyIndex: clamp(Math.round(45 + score * 0.5), 0, 100),
         recoveryPattern: clamp(Math.round(38 + score * 0.45), 0, 100),
         consistencyMonitoring: clamp(Math.round(55 + (100 - score) * 0.35), 0, 100),
+        dataMetrics: stats.map(({ metric, unit, mean, min, max }) => ({ metric, unit, mean, min, max })),
+        primaryMetricName: primaryMetric?.metric ?? 'Metric A',
+        primaryMetricUnit: primaryMetric?.unit ?? 'value',
+        secondaryMetricName: secondaryMetric?.metric ?? 'Metric B',
+        secondaryMetricUnit: secondaryMetric?.unit ?? 'value',
         hrAccelerationTrend,
         anomalyVisualization,
     };
@@ -160,7 +233,7 @@ export const attachUploadToAthlete = (input: {
     const nowIso = new Date().toISOString();
     const nowDate = nowIso.split('T')[0];
 
-    const inference = buildInferenceFromDataset(input.parsedRows);
+    const inference = buildInferenceFromDataset(input.parsedRows, input.columns);
 
     const session: UploadSession = {
         sessionId: `SES-${input.athleteId}-${Date.now()}`,
@@ -182,6 +255,7 @@ export const attachUploadToAthlete = (input: {
                 score: inference.score,
                 level: inference.level,
             },
+            dataMetrics: inference.dataMetrics,
             hrAccelerationTrend: inference.hrAccelerationTrend,
             anomalyVisualization: inference.anomalyVisualization,
         },

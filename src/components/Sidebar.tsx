@@ -19,9 +19,9 @@ export default function Sidebar() {
         <ul className="space-y-2">
           {navItems.map((item) => (
             <li key={item.name}>
-              <NavLink 
-                to={item.href} 
-                className={({ isActive }) => 
+              <NavLink
+                to={item.href}
+                className={({ isActive }) =>
                   `flex items-center gap-3 px-4 py-3 rounded-lg transition-colors duration-300 ${isActive ? 'bg-glass-highlight text-white' : 'text-stone-300 hover:text-white hover:bg-glass-highlight'}`
                 }
               >

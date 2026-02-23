@@ -9,8 +9,8 @@ type IsolationForestPanelProps = {
 export default function IsolationForestPanel({ modelData }: IsolationForestPanelProps) {
   return (
     <GlassCard>
-      <h3 className="text-xl font-bold text-glass-white mb-1">Isolation Forest</h3>
-      <p className="text-sm text-stone-400 mb-6">Anomaly Detection</p>
+      <h3 className="text-xl font-bold text-glass-white mb-1">Consistency Monitoring</h3>
+      <p className="text-sm text-stone-400 mb-6">Variability anomaly and stability pattern analysis</p>
       <div className="flex items-center justify-center mb-6">
         <div className="relative w-48 h-24 overflow-hidden">
           <motion.div 
@@ -31,7 +31,7 @@ export default function IsolationForestPanel({ modelData }: IsolationForestPanel
         <p className="text-sm text-stone-400">Outlier Probability</p>
       </div>
       <div>
-        <h4 className="font-semibold text-white mb-2">Feature Impact:</h4>
+        <h4 className="font-semibold text-white mb-2">Dataset Metric Impact:</h4>
         <div className="space-y-2">
           {modelData.featureImpact.map(f => (
             <div key={f.feature} className="flex items-center">
