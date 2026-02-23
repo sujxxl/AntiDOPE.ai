@@ -4,7 +4,7 @@ import { NavLink } from 'react-router-dom';
 const navItems = [
   { name: 'Dashboard', icon: Home, href: '/' },
   { name: 'Athletes', icon: Users, href: '/search' },
-  { name: 'Reports', icon: BarChart, href: '/report/4829' }, // Example link
+  { name: 'Reports', icon: BarChart, href: '/reports' },
   { name: 'Upload Data', icon: Upload, href: '/upload' },
 ];
 

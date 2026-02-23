@@ -6,6 +6,7 @@ import LoginPage from './pages/LoginPage';
 import Dashboard from './pages/Dashboard';
 import AthleteProfilePage from './pages/AthleteProfilePage';
 import RiskReportPage from './pages/RiskReportPage';
+import ReportsPage from './pages/ReportsPage';
 import UploadPage from './pages/UploadPage';
 import SearchFilterPage from './pages/SearchFilterPage';
 
@@ -26,6 +27,7 @@ export default function App() {
       children: [
         { index: true, element: <Dashboard /> },
         { path: 'athlete/:id', element: <AthleteProfilePage /> },
+        { path: 'reports', element: <ReportsPage /> },
         { path: 'report/:id', element: <RiskReportPage /> },
         { path: 'upload', element: <UploadPage /> },
         { path: 'search', element: <SearchFilterPage /> },
