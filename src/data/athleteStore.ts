@@ -158,8 +158,88 @@ const numericColumnStats = (rows: Record<string, unknown>[], columns: string[]) 
         .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
 };
 
+const stdDev = (values: number[]) => {
+    if (values.length <= 1) {
+        return 0;
+    }
+
+    const mean = values.reduce((acc, value) => acc + value, 0) / values.length;
+    const variance = values.reduce((acc, value) => acc + (value - mean) ** 2, 0) / values.length;
+    return Math.sqrt(variance);
+};
+
+const pickColumn = (columns: string[], patterns: RegExp[]) => {
+    return columns.find((column) => patterns.some((pattern) => pattern.test(column.toLowerCase())));
+};
+
+const parseTimeValue = (value: unknown) => {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+        return value;
+    }
+
+    if (typeof value === 'string') {
+        const parsedDate = Date.parse(value);
+        if (Number.isFinite(parsedDate)) {
+            return parsedDate / 1000;
+        }
+
+        const parsedNumber = Number(value);
+        if (Number.isFinite(parsedNumber)) {
+            return parsedNumber;
+        }
+    }
+
+    return null;
+};
+
+const computeConsistencySignals = (rows: Record<string, unknown>[], columns: string[]) => {
+    const speedColumn = pickColumn(columns, [/speed/, /velocity/, /sprint/, /acceleration/, /^acc$/]);
+    const timeColumn = pickColumn(columns, [/timestamp/, /time/, /date/]);
+
+    const speedValues = (speedColumn
+        ? rows
+            .map((row) => {
+                const rawValue = row[speedColumn];
+                return typeof rawValue === 'number' ? rawValue : Number(rawValue);
+            })
+            .filter((value) => Number.isFinite(value))
+        : []);
+
+    const timeValues = (timeColumn
+        ? rows
+            .map((row) => parseTimeValue(row[timeColumn]))
+            .filter((value): value is number => value !== null)
+        : []);
+
+    const maxSpeed = speedValues.length > 0 ? Math.max(...speedValues) : 0;
+    const speedStd = stdDev(speedValues);
+
+    const humanLimit = clamp((maxSpeed / 12.5) * 100, 0, 100);
+
+    let fatigueVariance = speedStd;
+    if (speedValues.length > 2 && timeValues.length === speedValues.length) {
+        const speedDeltas = speedValues.slice(1).map((speed, index) => {
+            const dt = Math.max(1, Math.abs(timeValues[index + 1] - timeValues[index]));
+            return (speedValues[index] - speed) / dt;
+        });
+        fatigueVariance = stdDev(speedDeltas) * 25;
+    }
+
+    const fatigueVarianceScore = clamp(fatigueVariance * 8, 0, 100);
+    const abnormalConsistency = clamp(100 - fatigueVarianceScore + (humanLimit > 85 ? 12 : 0), 0, 100);
+
+    return {
+        speedMetric: speedColumn ?? 'Speed',
+        timeMetric: timeColumn ?? 'Timestamp',
+        humanLimit: Number(humanLimit.toFixed(2)),
+        fatigueVariance: Number(fatigueVarianceScore.toFixed(2)),
+        abnormalConsistency: Number(abnormalConsistency.toFixed(2)),
+    };
+};
+
 const buildInferenceFromDataset = (rows: Record<string, unknown>[], columns: string[]) => {
     const stats = numericColumnStats(rows, columns);
+    const consistencySignals = computeConsistencySignals(rows, columns);
 
     const numericValues = rows.flatMap((row) =>
         Object.values(row)
@@ -196,12 +276,22 @@ const buildInferenceFromDataset = (rows: Record<string, unknown>[], columns: str
         ),
     }));
 
-    const anomalyVisualization = (stats.length > 0 ? stats : columns.map((column) => ({ metric: column, mean: 1 })))
-        .slice(0, 5)
-        .map((entry, index) => ({
-            feature: entry.metric,
-            impact: Number(clamp((Number(entry.mean) / (avg || 1)) * 0.4 + (0.22 - index * 0.03), 0.08, 0.9).toFixed(2)),
-        }));
+    const anomalyVisualization = [
+        {
+            feature: `Human Limit (${consistencySignals.speedMetric})`,
+            impact: Number(clamp(consistencySignals.humanLimit / 100, 0.08, 0.95).toFixed(2)),
+        },
+        {
+            feature: `Fatigue Variance (${consistencySignals.timeMetric})`,
+            impact: Number(clamp(consistencySignals.fatigueVariance / 100, 0.08, 0.95).toFixed(2)),
+        },
+        {
+            feature: 'Abnormal Consistency',
+            impact: Number(clamp(consistencySignals.abnormalConsistency / 100, 0.08, 0.95).toFixed(2)),
+        },
+    ];
+
+    const anomalyProbability = clamp(consistencySignals.abnormalConsistency / 100, 0.08, 0.98);
 
     return {
         score,
@@ -209,7 +299,9 @@ const buildInferenceFromDataset = (rows: Record<string, unknown>[], columns: str
         confidence,
         efficiencyIndex: clamp(Math.round(45 + score * 0.5), 0, 100),
         recoveryPattern: clamp(Math.round(38 + score * 0.45), 0, 100),
-        consistencyMonitoring: clamp(Math.round(55 + (100 - score) * 0.35), 0, 100),
+        consistencyMonitoring: clamp(Math.round(consistencySignals.abnormalConsistency), 0, 100),
+        consistencySignals,
+        anomalyProbability,
         dataMetrics: stats.map(({ metric, unit, mean, min, max }) => ({ metric, unit, mean, min, max })),
         primaryMetricName: primaryMetric?.metric ?? 'Metric A',
         primaryMetricUnit: primaryMetric?.unit ?? 'value',
@@ -251,6 +343,7 @@ export const attachUploadToAthlete = (input: {
             efficiencyIndex: inference.efficiencyIndex,
             recoveryPattern: inference.recoveryPattern,
             consistencyMonitoring: inference.consistencyMonitoring,
+            consistencySignals: inference.consistencySignals,
             compositeRiskAssessment: {
                 score: inference.score,
                 level: inference.level,
@@ -299,8 +392,8 @@ export const attachUploadToAthlete = (input: {
                     data: linearData,
                 },
                 isolationForest: {
-                    anomalyScore: Number((inference.score / 100).toFixed(2)),
-                    outlierProbability: Number((inference.score / 100).toFixed(2)),
+                    anomalyScore: Number(inference.anomalyProbability.toFixed(2)),
+                    outlierProbability: Number(inference.anomalyProbability.toFixed(2)),
                     featureImpact: inference.anomalyVisualization,
                 },
                 compositeRisk: {

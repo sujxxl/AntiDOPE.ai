@@ -16,6 +16,13 @@ export interface UploadSession {
         efficiencyIndex: number;
         recoveryPattern: number;
         consistencyMonitoring: number;
+        consistencySignals?: {
+            speedMetric: string;
+            timeMetric: string;
+            humanLimit: number;
+            fatigueVariance: number;
+            abnormalConsistency: number;
+        };
         compositeRiskAssessment: {
             score: number;
             level: RiskLevel;
@@ -154,6 +161,13 @@ const seedAthletes: Athlete[] = [
                     efficiencyIndex: 78,
                     recoveryPattern: 74,
                     consistencyMonitoring: 62,
+                    consistencySignals: {
+                        speedMetric: 'Acceleration',
+                        timeMetric: 'Date',
+                        humanLimit: 74,
+                        fatigueVariance: 18,
+                        abnormalConsistency: 62,
+                    },
                     compositeRiskAssessment: {
                         score: 89,
                         level: 'High',
@@ -166,9 +180,9 @@ const seedAthletes: Athlete[] = [
                         { name: 'W5', hr: 149, acceleration: 2.5 },
                     ],
                     anomalyVisualization: [
-                        { feature: 'HGB', impact: 0.45 },
-                        { feature: 'RET%', impact: 0.3 },
-                        { feature: 'OFF-Score', impact: 0.25 },
+                        { feature: 'Human Limit (Acceleration)', impact: 0.45 },
+                        { feature: 'Fatigue Variance (Date)', impact: 0.3 },
+                        { feature: 'Abnormal Consistency', impact: 0.25 },
                     ],
                 },
             },
@@ -244,6 +258,13 @@ const seedAthletes: Athlete[] = [
                     efficiencyIndex: 71,
                     recoveryPattern: 67,
                     consistencyMonitoring: 70,
+                    consistencySignals: {
+                        speedMetric: 'Acceleration',
+                        timeMetric: 'Date',
+                        humanLimit: 79,
+                        fatigueVariance: 12,
+                        abnormalConsistency: 70,
+                    },
                     compositeRiskAssessment: {
                         score: 68,
                         level: 'Moderate',
@@ -256,9 +277,9 @@ const seedAthletes: Athlete[] = [
                         { name: 'W5', hr: 133, acceleration: 3.2 },
                     ],
                     anomalyVisualization: [
-                        { feature: 'T/E Ratio', impact: 0.5 },
-                        { feature: 'HGB', impact: 0.25 },
-                        { feature: 'RET%', impact: 0.25 },
+                        { feature: 'Human Limit (Acceleration)', impact: 0.5 },
+                        { feature: 'Fatigue Variance (Date)', impact: 0.25 },
+                        { feature: 'Abnormal Consistency', impact: 0.25 },
                     ],
                 },
             },

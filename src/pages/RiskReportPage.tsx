@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useParams } from 'react-router-dom';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, LineChart, Line } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 import GlassCard from '../components/GlassCard';
 import GlassButton from '../components/GlassButton';
 import { Printer } from 'lucide-react';
@@ -29,8 +29,20 @@ export default function RiskReportPage() {
 
     const primaryMetric = latestSession.modelOutputs.dataMetrics?.[0];
     const secondaryMetric = latestSession.modelOutputs.dataMetrics?.[1] ?? primaryMetric;
+    const consistencySignals = latestSession.modelOutputs.consistencySignals;
     const primaryLabel = primaryMetric ? `${primaryMetric.metric} (${primaryMetric.unit})` : 'Primary Metric';
     const secondaryLabel = secondaryMetric ? `${secondaryMetric.metric} (${secondaryMetric.unit})` : 'Secondary Metric';
+
+    const weightedData = [
+        {
+            name: 'Trend Signal',
+            value: Number((athlete.models.compositeRisk.contributions.trend * 100).toFixed(0)),
+        },
+        {
+            name: 'Anomaly Signal',
+            value: Number((athlete.models.compositeRisk.contributions.anomaly * 100).toFixed(0)),
+        },
+    ];
 
     return (
         <div className="printable-area space-y-8 print:text-black">
@@ -49,6 +61,7 @@ export default function RiskReportPage() {
                 <div className="absolute right-4 top-4 text-white/10 text-3xl font-bold tracking-wider print:text-black/20">
                     AntiDOPE.ai
                 </div>
+
                 <div className="mb-6 text-sm grid grid-cols-1 md:grid-cols-4 gap-3">
                     <p><span className="text-stone-400">Athlete:</span> <span className="text-white">{athlete.name}</span></p>
                     <p><span className="text-stone-400">Athlete ID:</span> <span className="text-white">{athlete.id}</span></p>
@@ -62,16 +75,61 @@ export default function RiskReportPage() {
                         <p className="text-sm text-stone-400">Efficiency Index</p>
                         <p className="text-4xl font-bold text-white">{latestSession.modelOutputs.efficiencyIndex}</p>
                         <p className="text-xs text-stone-400 mt-2">Primary trend metric: {primaryLabel}</p>
+                        <div className="h-44 mt-3 chart-crisp">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={latestSession.modelOutputs.hrAccelerationTrend}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
+                                    <XAxis dataKey="name" stroke="#9ca3af" />
+                                    <YAxis yAxisId="left" stroke="#9ca3af" />
+                                    <YAxis yAxisId="right" orientation="right" stroke="#9ca3af" />
+                                    <Tooltip />
+                                    <Line yAxisId="left" type="monotone" dataKey="hr" stroke="#00FFAB" strokeWidth={2} name={primaryLabel} dot={false} />
+                                    <Line yAxisId="right" type="monotone" dataKey="acceleration" stroke="#FFD24D" strokeWidth={2} name={secondaryLabel} dot={false} />
+                                </LineChart>
+                            </ResponsiveContainer>
+                        </div>
                     </div>
+
+                    <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                        <p className="text-sm text-stone-400">Consistency Monitoring</p>
+                        <p className="text-4xl font-bold text-white">{latestSession.modelOutputs.consistencyMonitoring}</p>
+                        <p className="text-xs text-stone-400 mt-2">
+                            Sprint anomaly from {consistencySignals?.speedMetric ?? 'speed'} and {consistencySignals?.timeMetric ?? 'timestamp'}
+                        </p>
+                        <div className="mt-2 space-y-1 text-xs text-stone-300">
+                            <p>Human Limit: <span className="text-white font-semibold">{consistencySignals?.humanLimit ?? '--'}%</span></p>
+                            <p>Fatigue Variance: <span className="text-white font-semibold">{consistencySignals?.fatigueVariance ?? '--'}%</span></p>
+                            <p>Abnormal Consistency: <span className="text-white font-semibold">{consistencySignals?.abnormalConsistency ?? '--'}%</span></p>
+                        </div>
+                        <div className="h-32 mt-3 chart-crisp">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={latestSession.modelOutputs.anomalyVisualization.slice(0, 3)} layout="vertical">
+                                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
+                                    <XAxis type="number" stroke="#9ca3af" />
+                                    <YAxis type="category" dataKey="feature" stroke="#9ca3af" width={90} />
+                                    <Tooltip />
+                                    <Bar dataKey="impact" fill="#FFD24D" />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
                     <div className="rounded-xl border border-white/10 bg-white/5 p-4">
                         <p className="text-sm text-stone-400">Recovery Pattern Analysis</p>
                         <p className="text-4xl font-bold text-white">{latestSession.modelOutputs.recoveryPattern}</p>
                         <p className="text-xs text-stone-400 mt-2">Secondary trend metric: {secondaryLabel}</p>
-                    </div>
-                    <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-                        <p className="text-sm text-stone-400">Consistency Monitoring</p>
-                        <p className="text-4xl font-bold text-white">{latestSession.modelOutputs.consistencyMonitoring}</p>
-                        <p className="text-xs text-stone-400 mt-2">Anomaly profile from uploaded session data</p>
+                        <div className="h-44 mt-3 chart-crisp">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={athlete.models.linearRegression.data}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
+                                    <XAxis dataKey="name" stroke="#9ca3af" />
+                                    <YAxis stroke="#9ca3af" />
+                                    <Tooltip />
+                                    <Line type="monotone" dataKey="actual" stroke="#00FFAB" strokeWidth={2} name="Observed" dot={false} />
+                                    <Line type="monotone" dataKey="predicted" stroke="#FFD24D" strokeWidth={2} name="Expected" dot={false} />
+                                </LineChart>
+                            </ResponsiveContainer>
+                        </div>
                     </div>
                 </div>
 
@@ -98,27 +156,19 @@ export default function RiskReportPage() {
                             </div>
                         </div>
                     </div>
+                    <div className="h-48 mt-4 chart-crisp">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={weightedData}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
+                                <XAxis dataKey="name" stroke="#9ca3af" />
+                                <YAxis domain={[0, 100]} stroke="#9ca3af" />
+                                <Tooltip />
+                                <Bar dataKey="value" fill="#8B5CF6" radius={[6, 6, 0, 0]} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
                 </div>
             </section>
-
-            <GlassCard className="report-section">
-                <h2 className="text-2xl font-bold text-glass-white report-header">Efficiency Index</h2>
-                <p className="text-stone-300 mb-3">Score: <span className="font-semibold text-white print:text-black">{latestSession.modelOutputs.efficiencyIndex}</span></p>
-                <div className="h-80 chart-crisp">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={latestSession.modelOutputs.hrAccelerationTrend}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
-                            <XAxis dataKey="name" stroke="#9ca3af" />
-                            <YAxis yAxisId="left" stroke="#9ca3af" />
-                            <YAxis yAxisId="right" orientation="right" stroke="#9ca3af" />
-                            <Tooltip />
-                            <Legend />
-                            <Line yAxisId="left" type="monotone" dataKey="hr" stroke="#00FFAB" strokeWidth={3} name={primaryLabel} dot={false} />
-                            <Line yAxisId="right" type="monotone" dataKey="acceleration" stroke="#FFD24D" strokeWidth={3} name={secondaryLabel} dot={false} />
-                        </LineChart>
-                    </ResponsiveContainer>
-                </div>
-            </GlassCard>
 
             <GlassCard className="report-section">
                 <h2 className="text-2xl font-bold text-glass-white report-header">Uploaded Dataset Metrics</h2>
@@ -146,76 +196,6 @@ export default function RiskReportPage() {
                             ))}
                         </tbody>
                     </table>
-                </div>
-            </GlassCard>
-
-            <GlassCard className="report-section">
-                <h2 className="text-2xl font-bold text-glass-white report-header">Recovery Pattern Analysis</h2>
-                <p className="text-stone-300 mb-3">Score: <span className="font-semibold text-white print:text-black">{latestSession.modelOutputs.recoveryPattern}</span></p>
-                <div className="h-72 chart-crisp">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={athlete.models.linearRegression.data}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
-                            <XAxis dataKey="name" stroke="#9ca3af" />
-                            <YAxis stroke="#9ca3af" />
-                            <Tooltip />
-                            <Legend />
-                            <Line type="monotone" dataKey="actual" stroke="#00FFAB" strokeWidth={2} name="Actual" />
-                            <Line type="monotone" dataKey="predicted" stroke="#FFD24D" strokeWidth={2} name="Predicted" />
-                        </LineChart>
-                    </ResponsiveContainer>
-                </div>
-            </GlassCard>
-
-            <GlassCard className="report-section">
-                <h2 className="text-2xl font-bold text-glass-white report-header">Consistency Monitoring</h2>
-                <p className="text-stone-300 mb-3">Score: <span className="font-semibold text-white print:text-black">{latestSession.modelOutputs.consistencyMonitoring}</span></p>
-                <div className="h-72 chart-crisp">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={athlete.riskProgression}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
-                            <XAxis dataKey="date" stroke="#9ca3af" />
-                            <YAxis stroke="#9ca3af" domain={[0, 100]} />
-                            <Tooltip />
-                            <Line type="monotone" dataKey="score" stroke="#FF4D4D" strokeWidth={3} name="Risk Progression" />
-                        </LineChart>
-                    </ResponsiveContainer>
-                </div>
-            </GlassCard>
-
-            <GlassCard className="report-section">
-                <h2 className="text-2xl font-bold text-glass-white report-header">Composite Risk Assessment</h2>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <div>
-                        <h3 className="text-lg font-semibold text-white print:text-black mb-2">{primaryLabel} vs {secondaryLabel}</h3>
-                        <div className="h-72 chart-crisp">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <LineChart data={latestSession.modelOutputs.hrAccelerationTrend}>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
-                                    <XAxis dataKey="name" stroke="#9ca3af" />
-                                    <YAxis yAxisId="left" stroke="#9ca3af" />
-                                    <YAxis yAxisId="right" orientation="right" stroke="#9ca3af" />
-                                    <Tooltip />
-                                    <Line yAxisId="left" type="monotone" dataKey="hr" stroke="#00FFAB" strokeWidth={3} name={primaryLabel} />
-                                    <Line yAxisId="right" type="monotone" dataKey="acceleration" stroke="#FFD24D" strokeWidth={3} name={secondaryLabel} />
-                                </LineChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </div>
-                    <div>
-                        <h3 className="text-lg font-semibold text-white print:text-black mb-2">Anomaly Visualization</h3>
-                        <div className="h-72 chart-crisp">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={latestSession.modelOutputs.anomalyVisualization} layout="vertical">
-                                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
-                                    <XAxis type="number" stroke="#9ca3af" />
-                                    <YAxis type="category" dataKey="feature" stroke="#9ca3af" width={120} />
-                                    <Tooltip />
-                                    <Bar dataKey="impact" fill="#FFD24D" />
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </div>
                 </div>
             </GlassCard>
 
