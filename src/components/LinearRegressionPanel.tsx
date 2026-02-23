@@ -20,17 +20,17 @@ export default function LinearRegressionPanel({ modelData }: LinearRegressionPan
           <LineChart data={modelData.data}>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
             <XAxis dataKey="name" stroke="#9ca3af" />
-            <YAxis stroke="#9ca3af" domain={['dataMin - 1', 'dataMax + 1']}/>
-            <Tooltip 
-                contentStyle={{ 
-                    backgroundColor: 'rgba(10, 10, 10, 0.8)',
-                    backdropFilter: 'blur(10px)',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                    borderRadius: '1rem',
-                    color: '#fff'
-                }}
+            <YAxis stroke="#9ca3af" domain={['dataMin - 1', 'dataMax + 1']} />
+            <Tooltip
+              contentStyle={{
+                backgroundColor: 'rgba(10, 10, 10, 0.8)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                borderRadius: '1rem',
+                color: '#fff'
+              }}
             />
-            <Legend wrapperStyle={{ color: '#fff' }}/>
+            <Legend wrapperStyle={{ color: '#fff' }} />
             <Line type="monotone" dataKey="actual" stroke="#00FFAB" strokeWidth={2} name="Observed" />
             <Line type="monotone" dataKey="predicted" stroke="#FFD24D" strokeWidth={2} strokeDasharray="5 5" name="Expected" />
             <ReferenceLine y={modelData.prediction} label={{ value: 'Expected Level', fill: '#FFD24D' }} stroke="#FFD24D" strokeDasharray="3 3" />

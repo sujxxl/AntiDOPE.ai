@@ -13,7 +13,7 @@ export default function IsolationForestPanel({ modelData }: IsolationForestPanel
       <p className="text-sm text-stone-400 mb-6">Variability anomaly and stability pattern analysis</p>
       <div className="flex items-center justify-center mb-6">
         <div className="relative w-48 h-24 overflow-hidden">
-          <motion.div 
+          <motion.div
             initial={{ rotate: -90 }}
             animate={{ rotate: -90 + (modelData.anomalyScore * 180) }}
             transition={{ type: 'spring', stiffness: 100, damping: 15 }}
@@ -28,16 +28,16 @@ export default function IsolationForestPanel({ modelData }: IsolationForestPanel
       </div>
       <div className="text-center mb-6">
         <p className="text-4xl font-bold text-white">{(modelData.outlierProbability * 100).toFixed(0)}%</p>
-        <p className="text-sm text-stone-400">Outlier Probability</p>
+        <p className="text-sm text-stone-400">Abnormal Consistency</p>
       </div>
       <div>
-        <h4 className="font-semibold text-white mb-2">Dataset Metric Impact:</h4>
+        <h4 className="font-semibold text-white mb-2">Sprint Consistency Factors:</h4>
         <div className="space-y-2">
           {modelData.featureImpact.map(f => (
             <div key={f.feature} className="flex items-center">
               <span className="w-24 text-sm text-stone-300">{f.feature}</span>
               <div className="flex-1 h-2 bg-white/10 rounded-full">
-                <motion.div 
+                <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${f.impact * 100}%` }}
                   transition={{ duration: 0.8, ease: 'easeOut' }}

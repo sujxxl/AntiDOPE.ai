@@ -49,28 +49,54 @@ export default function RiskReportPage() {
                 <div className="absolute right-4 top-4 text-white/10 text-3xl font-bold tracking-wider print:text-black/20">
                     AntiDOPE.ai
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
-                    <div>
-                        <h2 className="text-2xl font-bold text-glass-white report-header">Athlete Details</h2>
-                        <div className="space-y-2 text-sm">
-                            <p><span className="text-stone-400">Name:</span> <span className="text-white">{athlete.name}</span></p>
-                            <p><span className="text-stone-400">Athlete ID:</span> <span className="text-white">{athlete.id}</span></p>
-                            <p><span className="text-stone-400">Sport:</span> <span className="text-white">{athlete.sport}</span></p>
-                            <p><span className="text-stone-400">Inference Timestamp:</span> <span className="text-white">{new Date(latestSession.inferenceTimestamp).toLocaleString()}</span></p>
-                        </div>
+                <div className="mb-6 text-sm grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <p><span className="text-stone-400">Athlete:</span> <span className="text-white">{athlete.name}</span></p>
+                    <p><span className="text-stone-400">Athlete ID:</span> <span className="text-white">{athlete.id}</span></p>
+                    <p><span className="text-stone-400">Sport:</span> <span className="text-white">{athlete.sport}</span></p>
+                    <p><span className="text-stone-400">Inference:</span> <span className="text-white">{new Date(latestSession.inferenceTimestamp).toLocaleString()}</span></p>
+                </div>
+
+                <h2 className="text-2xl font-bold text-glass-white report-header">Core Analysis Summary</h2>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                        <p className="text-sm text-stone-400">Efficiency Index</p>
+                        <p className="text-4xl font-bold text-white">{latestSession.modelOutputs.efficiencyIndex}</p>
+                        <p className="text-xs text-stone-400 mt-2">Primary trend metric: {primaryLabel}</p>
                     </div>
-                    <div>
-                        <h2 className="text-2xl font-bold text-glass-white report-header">Risk Score Summary</h2>
-                        <p className="text-6xl font-bold text-risk-high print:text-black leading-none">{latestSession.modelOutputs.compositeRiskAssessment.score}</p>
-                        <p className="text-stone-400 mt-2">Composite risk score</p>
-                        <div className="mt-3">
+                    <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                        <p className="text-sm text-stone-400">Recovery Pattern Analysis</p>
+                        <p className="text-4xl font-bold text-white">{latestSession.modelOutputs.recoveryPattern}</p>
+                        <p className="text-xs text-stone-400 mt-2">Secondary trend metric: {secondaryLabel}</p>
+                    </div>
+                    <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                        <p className="text-sm text-stone-400">Consistency Monitoring</p>
+                        <p className="text-4xl font-bold text-white">{latestSession.modelOutputs.consistencyMonitoring}</p>
+                        <p className="text-xs text-stone-400 mt-2">Anomaly profile from uploaded session data</p>
+                    </div>
+                </div>
+
+                <div className="mt-6 rounded-xl border border-white/10 bg-white/5 p-5">
+                    <h3 className="text-lg font-semibold text-white mb-3">Summarized Weighted Result</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+                        <div>
+                            <p className="text-xs text-stone-400 uppercase tracking-wide">Final Risk Score</p>
+                            <p className="text-5xl font-bold text-risk-high print:text-black leading-none">{latestSession.modelOutputs.compositeRiskAssessment.score}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-stone-400 uppercase tracking-wide mb-2">Risk Level</p>
                             <RiskBadge level={latestSession.modelOutputs.compositeRiskAssessment.level} />
                         </div>
-                    </div>
-                    <div>
-                        <h2 className="text-2xl font-bold text-glass-white report-header">Confidence Level</h2>
-                        <p className="text-5xl font-bold text-white print:text-black">{(latestSession.confidence * 100).toFixed(0)}%</p>
-                        <p className="text-stone-400 mt-2">Model confidence</p>
+                        <div>
+                            <p className="text-xs text-stone-400 uppercase tracking-wide">Confidence</p>
+                            <p className="text-3xl font-bold text-white print:text-black">{(latestSession.confidence * 100).toFixed(0)}%</p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-stone-400 uppercase tracking-wide">Weighted Split</p>
+                            <div className="flex gap-4 mt-1">
+                                <p className="text-sm text-stone-300">Trend <span className="text-white font-semibold">{(athlete.models.compositeRisk.contributions.trend * 100).toFixed(0)}%</span></p>
+                                <p className="text-sm text-stone-300">Anomaly <span className="text-white font-semibold">{(athlete.models.compositeRisk.contributions.anomaly * 100).toFixed(0)}%</span></p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
