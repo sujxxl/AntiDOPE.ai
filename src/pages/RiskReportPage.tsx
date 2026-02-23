@@ -33,6 +33,24 @@ export default function RiskReportPage() {
     const primaryLabel = primaryMetric ? `${primaryMetric.metric} (${primaryMetric.unit})` : 'Primary Metric';
     const secondaryLabel = secondaryMetric ? `${secondaryMetric.metric} (${secondaryMetric.unit})` : 'Secondary Metric';
 
+    const consistencyChartData = (latestSession.modelOutputs.anomalyVisualization.slice(0, 3) ?? []).map((item) => {
+        const normalized = item.feature.toLowerCase();
+
+        if (normalized.includes('human limit')) {
+            return { ...item, shortFeature: 'Human Limit' };
+        }
+
+        if (normalized.includes('fatigue variance')) {
+            return { ...item, shortFeature: 'Fatigue Variance' };
+        }
+
+        if (normalized.includes('abnormal consistency')) {
+            return { ...item, shortFeature: 'Abnormal Consistency' };
+        }
+
+        return { ...item, shortFeature: item.feature };
+    });
+
     const weightedData = [
         {
             name: 'Trend Signal',
@@ -101,12 +119,12 @@ export default function RiskReportPage() {
                             <p>Fatigue Variance: <span className="text-white font-semibold">{consistencySignals?.fatigueVariance ?? '--'}%</span></p>
                             <p>Abnormal Consistency: <span className="text-white font-semibold">{consistencySignals?.abnormalConsistency ?? '--'}%</span></p>
                         </div>
-                        <div className="h-32 mt-3 chart-crisp">
+                        <div className="h-44 mt-3 chart-crisp">
                             <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={latestSession.modelOutputs.anomalyVisualization.slice(0, 3)} layout="vertical">
+                                <BarChart data={consistencyChartData} layout="vertical" margin={{ top: 6, right: 8, left: 8, bottom: 6 }}>
                                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
-                                    <XAxis type="number" stroke="#9ca3af" />
-                                    <YAxis type="category" dataKey="feature" stroke="#9ca3af" width={90} />
+                                    <XAxis type="number" stroke="#9ca3af" domain={[0, 1]} tickFormatter={(value) => Number(value).toFixed(2)} />
+                                    <YAxis type="category" dataKey="shortFeature" stroke="#9ca3af" width={120} tick={{ fontSize: 11 }} />
                                     <Tooltip />
                                     <Bar dataKey="impact" fill="#FFD24D" />
                                 </BarChart>
