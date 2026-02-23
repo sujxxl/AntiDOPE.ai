@@ -1,0 +1,7 @@
+athlete_id,timestamp,heart_rate,acceleration,recovery_heart_rate,time_post_exertion
+A01,1,172,2.4,150,30
+A01,2,172,2.4,138,60
+A01,3,174,2.5,152,30
+A01,4,174,2.5,140,60
+A01,5,176,2.6,154,30
+A01,6,176,2.6,142,60
