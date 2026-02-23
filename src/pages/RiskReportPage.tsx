@@ -33,23 +33,20 @@ export default function RiskReportPage() {
     const primaryLabel = primaryMetric ? `${primaryMetric.metric} (${primaryMetric.unit})` : 'Primary Metric';
     const secondaryLabel = secondaryMetric ? `${secondaryMetric.metric} (${secondaryMetric.unit})` : 'Secondary Metric';
 
-    const consistencyChartData = (latestSession.modelOutputs.anomalyVisualization.slice(0, 3) ?? []).map((item) => {
-        const normalized = item.feature.toLowerCase();
-
-        if (normalized.includes('human limit')) {
-            return { ...item, shortFeature: 'Human Limit' };
-        }
-
-        if (normalized.includes('fatigue variance')) {
-            return { ...item, shortFeature: 'Fatigue Variance' };
-        }
-
-        if (normalized.includes('abnormal consistency')) {
-            return { ...item, shortFeature: 'Abnormal Consistency' };
-        }
-
-        return { ...item, shortFeature: item.feature };
-    });
+    const consistencyChartData = [
+        {
+            shortFeature: 'Human Limit',
+            impact: Number(((consistencySignals?.humanLimit ?? 0) / 100).toFixed(2)),
+        },
+        {
+            shortFeature: 'Fatigue Variance',
+            impact: Number(((consistencySignals?.fatigueVariance ?? 0) / 100).toFixed(2)),
+        },
+        {
+            shortFeature: 'Abnormal Consistency',
+            impact: Number(((consistencySignals?.abnormalConsistency ?? 0) / 100).toFixed(2)),
+        },
+    ];
 
     const weightedData = [
         {

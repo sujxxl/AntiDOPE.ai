@@ -6,6 +6,24 @@ type IsolationForestPanelProps = {
   modelData: Athlete['models']['isolationForest'];
 };
 
+const normalizeFeatureLabel = (label: string) => {
+  const normalized = label.toLowerCase();
+
+  if (normalized.includes('off-score') || normalized.includes('abnormal consistency')) {
+    return 'Abnormal Consistency';
+  }
+
+  if (normalized.includes('hgb') || normalized.includes('t/e') || normalized.includes('human limit')) {
+    return 'Human Limit';
+  }
+
+  if (normalized.includes('ret') || normalized.includes('fatigue variance')) {
+    return 'Fatigue Variance';
+  }
+
+  return label;
+};
+
 export default function IsolationForestPanel({ modelData }: IsolationForestPanelProps) {
   return (
     <GlassCard>
@@ -34,8 +52,8 @@ export default function IsolationForestPanel({ modelData }: IsolationForestPanel
         <h4 className="font-semibold text-white mb-2">Sprint Consistency Factors:</h4>
         <div className="space-y-2">
           {modelData.featureImpact.map(f => (
-            <div key={f.feature} className="flex items-center">
-              <span className="w-24 text-sm text-stone-300">{f.feature}</span>
+            <div key={f.feature} className="flex items-center gap-2">
+              <span className="w-32 text-sm text-stone-300">{normalizeFeatureLabel(f.feature)}</span>
               <div className="flex-1 h-2 bg-white/10 rounded-full">
                 <motion.div
                   initial={{ width: 0 }}

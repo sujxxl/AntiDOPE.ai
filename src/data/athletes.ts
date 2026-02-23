@@ -120,9 +120,9 @@ const seedAthletes: Athlete[] = [
                 anomalyScore: 0.78,
                 outlierProbability: 0.85,
                 featureImpact: [
-                    { feature: 'HGB', impact: 0.45 },
-                    { feature: 'RET%', impact: 0.3 },
-                    { feature: 'OFF-Score', impact: 0.25 },
+                    { feature: 'Human Limit', impact: 0.45 },
+                    { feature: 'Fatigue Variance', impact: 0.3 },
+                    { feature: 'Abnormal Consistency', impact: 0.25 },
                 ],
             },
             compositeRisk: {
@@ -219,9 +219,9 @@ const seedAthletes: Athlete[] = [
                 anomalyScore: 0.55,
                 outlierProbability: 0.6,
                 featureImpact: [
-                    { feature: 'T/E Ratio', impact: 0.5 },
-                    { feature: 'HGB', impact: 0.25 },
-                    { feature: 'RET%', impact: 0.25 },
+                    { feature: 'Human Limit', impact: 0.5 },
+                    { feature: 'Fatigue Variance', impact: 0.25 },
+                    { feature: 'Abnormal Consistency', impact: 0.25 },
                 ],
             },
             compositeRisk: {

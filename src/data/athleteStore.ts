@@ -19,6 +19,50 @@ const clamp = (value: number, min: number, max: number) => Math.min(max, Math.ma
 
 const deepClone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 
+const normalizeFeatureLabel = (label: string) => {
+    const normalized = label.toLowerCase();
+
+    if (normalized.includes('off-score') || normalized.includes('abnormal consistency')) {
+        return 'Abnormal Consistency';
+    }
+
+    if (normalized.includes('hgb') || normalized.includes('t/e') || normalized.includes('human limit')) {
+        return 'Human Limit';
+    }
+
+    if (normalized.includes('ret') || normalized.includes('fatigue variance')) {
+        return 'Fatigue Variance';
+    }
+
+    return label;
+};
+
+const sanitizeAthleteLabels = (athletes: Athlete[]) => {
+    return athletes.map((athlete) => ({
+        ...athlete,
+        models: {
+            ...athlete.models,
+            isolationForest: {
+                ...athlete.models.isolationForest,
+                featureImpact: athlete.models.isolationForest.featureImpact.map((item) => ({
+                    ...item,
+                    feature: normalizeFeatureLabel(item.feature),
+                })),
+            },
+        },
+        uploadSessions: athlete.uploadSessions.map((session) => ({
+            ...session,
+            modelOutputs: {
+                ...session.modelOutputs,
+                anomalyVisualization: session.modelOutputs.anomalyVisualization.map((item) => ({
+                    ...item,
+                    feature: normalizeFeatureLabel(item.feature),
+                })),
+            },
+        })),
+    }));
+};
+
 const persistAthletes = (athletes: Athlete[]) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(athletes));
     window.dispatchEvent(new Event(ATHLETES_EVENT));
@@ -28,16 +72,18 @@ export const getAthletes = (): Athlete[] => {
     const stored = localStorage.getItem(STORAGE_KEY);
 
     if (!stored) {
-        const seeded = deepClone(seedAthletes);
+        const seeded = sanitizeAthleteLabels(deepClone(seedAthletes));
         persistAthletes(seeded);
         return seeded;
     }
 
     try {
         const parsed = JSON.parse(stored) as Athlete[];
-        return parsed;
+        const sanitized = sanitizeAthleteLabels(parsed);
+        persistAthletes(sanitized);
+        return sanitized;
     } catch {
-        const seeded = deepClone(seedAthletes);
+        const seeded = sanitizeAthleteLabels(deepClone(seedAthletes));
         persistAthletes(seeded);
         return seeded;
     }
