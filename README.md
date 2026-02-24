@@ -21,6 +21,9 @@ This contains everything you need to run your app locally.
 - Run SQL migration in Supabase: [backend/supabase_schema.sql](backend/supabase_schema.sql)
 - Backend analyze endpoint used by frontend upload flow: `POST https://antidope-ai.onrender.com/analyze`
 - Backend CORS/env template: [backend/.env.example](backend/.env.example)
+- Login now uses Supabase Auth email/password (`supabase.auth.signInWithPassword`)
+- Ensure `.env.local` has `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`
+- Create users in Supabase Auth (Email provider enabled) before signing in
 
 ## Local backend logic test
 

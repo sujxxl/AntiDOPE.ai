@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
+import type { Session } from '@supabase/supabase-js';
 import MainLayout from './layouts/MainLayout';
 import LoginPage from './pages/LoginPage';
 import Dashboard from './pages/Dashboard';
@@ -9,21 +10,63 @@ import RiskReportPage from './pages/RiskReportPage';
 import ReportsPage from './pages/ReportsPage';
 import UploadPage from './pages/UploadPage';
 import SearchFilterPage from './pages/SearchFilterPage';
+import { hasSupabaseConfig, supabase } from './lib/supabase';
 
 export default function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [session, setSession] = useState<Session | null>(null);
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
 
-  const handleLogin = () => setIsAuthenticated(true);
-  const handleLogout = () => setIsAuthenticated(false); // Example logout function
+  useEffect(() => {
+    if (!hasSupabaseConfig || !supabase) {
+      setIsLoadingAuth(false);
+      return;
+    }
+
+    let isMounted = true;
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (isMounted) {
+        setSession(data.session ?? null);
+        setIsLoadingAuth(false);
+      }
+    });
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession);
+      setIsLoadingAuth(false);
+    });
+
+    return () => {
+      isMounted = false;
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
+
+  const isAuthenticated = Boolean(session);
+
+  const handleLogout = async () => {
+    if (supabase) {
+      await supabase.auth.signOut();
+    }
+    setSession(null);
+  };
+
+  if (isLoadingAuth) {
+    return (
+      <div className="relative min-h-screen w-full overflow-hidden bg-glass-black flex items-center justify-center text-stone-300">
+        Checking session...
+      </div>
+    );
+  }
 
   const router = createBrowserRouter([
     {
       path: '/login',
-      element: !isAuthenticated ? <LoginPage onLogin={handleLogin} /> : <Navigate to="/" />,
+      element: !isAuthenticated ? <LoginPage /> : <Navigate to="/" />,
     },
     {
       path: '/',
-      element: isAuthenticated ? <MainLayout /> : <Navigate to="/login" />,
+      element: isAuthenticated ? <MainLayout onLogout={handleLogout} userEmail={session?.user?.email} /> : <Navigate to="/login" />,
       children: [
         { index: true, element: <Dashboard /> },
         { path: 'athlete/:id', element: <AthleteProfilePage /> },
