@@ -21,3 +21,9 @@ This contains everything you need to run your app locally.
 - Run SQL migration in Supabase: [backend/supabase_schema.sql](backend/supabase_schema.sql)
 - Backend analyze endpoint used by frontend upload flow: `POST https://antidope-ai.onrender.com/analyze`
 - Backend CORS/env template: [backend/.env.example](backend/.env.example)
+
+## Local backend logic test
+
+- Test script: [backend/test/run_local_logic_test.py](backend/test/run_local_logic_test.py)
+- It runs both files in [backend/test/no anomaly.csv](backend/test/no%20anomaly.csv) and [backend/test/yes anomaly.csv](backend/test/yes%20anomaly.csv)
+- Run from project root: `python backend/test/run_local_logic_test.py`

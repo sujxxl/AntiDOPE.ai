@@ -13,6 +13,11 @@ import pandas as pd
 EPSILON = 1e-8
 ROLLING_WINDOW = 5
 BASELINE_RECOVERY_K = 0.02
+EFFICIENCY_ALPHA = 1.2
+RECOVERY_ALPHA = 2.0
+CONSISTENCY_ALPHA = 5.0
+IF_EXPECTED_LOW = -0.5
+IF_EXPECTED_HIGH = 0.5
 
 BASE_REQUIRED_COLUMNS = {
     "athlete_id",
@@ -32,6 +37,48 @@ def setup_logging() -> None:
 
 def safe_clip(value: float, low: float = 0.0, high: float = 100.0) -> float:
     return float(np.clip(value, low, high))
+
+
+def sigmoid(x: float) -> float:
+    return float(1.0 / (1.0 + np.exp(-x)))
+
+
+def _distribution_reliability(scaler: Any, features: np.ndarray) -> tuple[float, float | None]:
+    if not (hasattr(scaler, "mean_") and hasattr(scaler, "scale_")):
+        return 1.0, None
+
+    n_input = int(features.shape[1])
+    means = np.asarray(scaler.mean_[:n_input], dtype=float)
+    scales = np.asarray(scaler.scale_[:n_input], dtype=float)
+    scales = np.where(np.abs(scales) < EPSILON, 1.0, scales)
+
+    feature_mean = np.nanmean(features, axis=0)
+    z = np.abs((feature_mean - means) / scales)
+    z_mean = float(np.nanmean(z)) if np.all(np.isfinite(z)) else float("nan")
+    if not np.isfinite(z_mean):
+        return 1.0, None
+
+    reliability = sigmoid(-(z_mean - 3.0))
+    return float(np.clip(reliability, 0.05, 1.0)), z_mean
+
+
+def _inverse_scale_prediction_if_available(
+    scaler: Any,
+    predicted: np.ndarray,
+    n_input_features: int,
+) -> np.ndarray:
+    pred = np.asarray(predicted, dtype=float).reshape(-1)
+    if not (hasattr(scaler, "mean_") and hasattr(scaler, "scale_") and hasattr(scaler, "n_features_in_")):
+        return pred
+
+    n_scaler = int(scaler.n_features_in_)
+    if n_scaler != n_input_features + 1:
+        return pred
+
+    target_mean = float(scaler.mean_[n_input_features])
+    target_scale = float(scaler.scale_[n_input_features])
+    target_scale = target_scale if abs(target_scale) > EPSILON else 1.0
+    return pred * target_scale + target_mean
 
 
 def load_models(base_path: Path = Path(".")) -> Dict[str, Any]:
@@ -204,7 +251,12 @@ def compute_efficiency(df: pd.DataFrame, reg_model: Any, scaler: Any) -> Dict[st
             reg_features = np.hstack([reg_features, pad])
 
     reg_features_scaled = _transform_with_scaler(scaler, reg_features)
-    predicted_acceleration = reg_model.predict(reg_features_scaled)
+    predicted_acceleration_raw = reg_model.predict(reg_features_scaled)
+    predicted_acceleration = _inverse_scale_prediction_if_available(
+        scaler,
+        predicted_acceleration_raw,
+        n_input_features=reg_features.shape[1],
+    )
 
     actual_acceleration = work["acceleration"].to_numpy(dtype=float)
     residual = actual_acceleration - predicted_acceleration
@@ -212,28 +264,48 @@ def compute_efficiency(df: pd.DataFrame, reg_model: Any, scaler: Any) -> Dict[st
     residual_rms = float(np.sqrt(np.mean(np.square(residual))))
     residual_mad = float(np.mean(np.abs(residual)))
     acc_std = float(np.std(actual_acceleration))
-    norm_scale = max(acc_std, 0.1)
-    normalized_residual = residual_rms / (norm_scale + EPSILON)
-    efficiency_score = safe_clip(100.0 * (1.0 - np.exp(-normalized_residual)))
+    standardized_residual = residual_rms / max(acc_std, EPSILON)
+    efficiency_score = safe_clip(100.0 * sigmoid(EFFICIENCY_ALPHA * (standardized_residual - 1.0)))
 
     ss_res = float(np.sum(np.square(residual)))
     ss_tot = float(np.sum(np.square(actual_acceleration - np.mean(actual_acceleration))))
     r2 = 1.0 - (ss_res / (ss_tot + EPSILON))
     r2 = float(np.clip(r2, -1.0, 1.0))
 
+    r2_clipped = float(np.clip(r2, 0.0, 1.0))
+    if r2 < 0.0:
+        r2_confidence = min(0.35, 0.2 + 0.15 * sigmoid(r2 * 4.0))
+    else:
+        r2_confidence = 0.2 + 0.8 * r2_clipped
+
     sample_factor = min(1.0, len(work) / 30.0)
-    fit_factor = max(0.0, (r2 + 1.0) / 2.0)
-    efficiency_confidence = safe_clip((0.6 * sample_factor + 0.4 * fit_factor) * 100.0)
+    sample_reliability = 0.5 + 0.5 * sample_factor
+    dist_reliability, distribution_z_mean = _distribution_reliability(scaler, reg_features)
+    efficiency_confidence = float(np.clip(r2_confidence * sample_reliability * dist_reliability, 0.0, 1.0))
+
+    logging.info(
+        "Efficiency debug | predicted_acc mean=%.6f min=%.6f max=%.6f | residual_rms=%.6f residual_mad=%.6f std_residual=%.6f r2=%.6f dist_z=%.6f",
+        float(np.mean(predicted_acceleration)),
+        float(np.min(predicted_acceleration)),
+        float(np.max(predicted_acceleration)),
+        residual_rms,
+        residual_mad,
+        standardized_residual,
+        r2,
+        distribution_z_mean if distribution_z_mean is not None else float("nan"),
+    )
 
     return {
         "score": round(efficiency_score, 2),
-        "confidence": round(efficiency_confidence, 2),
+        "confidence": round(efficiency_confidence * 100.0, 2),
         "details": {
             "samples_used": int(len(work)),
             "residual_rms": round(residual_rms, 6),
             "residual_mad": round(residual_mad, 6),
             "acceleration_std": round(acc_std, 6),
+            "standardized_residual": round(standardized_residual, 6),
             "session_r2": round(r2, 6),
+            "distribution_z_mean": round(distribution_z_mean, 6) if distribution_z_mean is not None else None,
         },
     }
 
@@ -278,15 +350,28 @@ def compute_consistency(df: pd.DataFrame, iso_model: Any, scaler: Any) -> Dict[s
     iso_features_scaled = _transform_with_scaler(scaler, session_feature_vector)
 
     decision = float(iso_model.decision_function(iso_features_scaled)[0])
-    consistency_score = safe_clip(100.0 / (1.0 + np.exp(5.0 * decision)))
+    expected_width = max(IF_EXPECTED_HIGH - IF_EXPECTED_LOW, EPSILON)
+    decision_percentile = float(np.clip((decision - IF_EXPECTED_LOW) / expected_width, 0.0, 1.0))
+    anomaly_percentile = 1.0 - decision_percentile
+    consistency_score = safe_clip(100.0 * sigmoid(CONSISTENCY_ALPHA * (anomaly_percentile - 0.5)))
 
-    sample_factor = min(1.0, len(work) / 30.0)
-    signal_factor = min(1.0, (abs(hr_acc_corr) + 0.25))
-    consistency_confidence = safe_clip((0.65 * sample_factor + 0.35 * signal_factor) * 100.0)
+    margin = abs(decision)
+    margin_confidence = sigmoid((margin - 0.08) * 8.0)
+    dist_reliability, distribution_z_mean = _distribution_reliability(scaler, session_feature_vector)
+    consistency_confidence = float(np.clip(margin_confidence * dist_reliability, 0.0, 1.0))
+
+    logging.info(
+        "Consistency debug | decision=%.6f percentile=%.6f anomaly_percentile=%.6f margin=%.6f dist_z=%.6f",
+        decision,
+        decision_percentile,
+        anomaly_percentile,
+        margin,
+        distribution_z_mean if distribution_z_mean is not None else float("nan"),
+    )
 
     return {
         "score": round(consistency_score, 2),
-        "confidence": round(consistency_confidence, 2),
+        "confidence": round(consistency_confidence * 100.0, 2),
         "details": {
             "samples_used": int(len(work)),
             "session_feature_vector": [
@@ -295,6 +380,10 @@ def compute_consistency(df: pd.DataFrame, iso_model: Any, scaler: Any) -> Dict[s
                 round(hr_acc_corr, 6),
             ],
             "decision_function": round(decision, 6),
+            "decision_percentile": round(decision_percentile, 6),
+            "anomaly_percentile": round(anomaly_percentile, 6),
+            "margin": round(margin, 6),
+            "distribution_z_mean": round(distribution_z_mean, 6) if distribution_z_mean is not None else None,
         },
     }
 
@@ -377,19 +466,32 @@ def compute_recovery(df: pd.DataFrame, baseline_k: float = BASELINE_RECOVERY_K) 
         }
 
     k_est = float(np.median(k_values))
+    synthetic_baseline_k = float(np.clip(np.percentile(k_values, 35), 0.008, 0.08))
+    baseline_k = float(0.7 * baseline_k + 0.3 * synthetic_baseline_k)
     relative_deviation = abs(k_est - baseline_k) / max(abs(baseline_k), EPSILON)
-    recovery_score = safe_clip(100.0 * (1.0 - np.exp(-relative_deviation)))
+    recovery_score = safe_clip(100.0 * sigmoid(RECOVERY_ALPHA * (relative_deviation - 1.0)))
 
     rec_pred = hr_floor + (peak_hr - hr_floor) * np.exp(-k_est * np.maximum(t, 0.0))
     rec_rmse = float(np.sqrt(np.mean(np.square(rec_hr - rec_pred))))
+    hr_range = max(abs(peak_hr - hr_floor), 1.0)
+    normalized_rmse = rec_rmse / hr_range
 
-    sample_factor = min(1.0, len(k_values) / 20.0)
-    fit_factor = 1.0 / (1.0 + rec_rmse / 10.0)
-    recovery_confidence = safe_clip((0.6 * sample_factor + 0.4 * fit_factor) * 100.0)
+    fit_confidence = 1.0 / (1.0 + normalized_rmse)
+    sample_factor = 0.5 + 0.5 * min(1.0, len(k_values) / 20.0)
+    recovery_confidence = float(np.clip(fit_confidence * sample_factor, 0.0, 1.0))
+
+    logging.info(
+        "Recovery debug | k_est=%.6f baseline_k=%.6f relative_deviation=%.6f rec_rmse=%.6f normalized_rmse=%.6f",
+        k_est,
+        baseline_k,
+        relative_deviation,
+        rec_rmse,
+        normalized_rmse,
+    )
 
     return {
         "score": round(recovery_score, 2),
-        "confidence": round(recovery_confidence, 2),
+        "confidence": round(recovery_confidence * 100.0, 2),
         "details": {
             "samples_used": int(len(k_values)),
             "peak_heart_rate": round(peak_hr, 6),
@@ -398,6 +500,7 @@ def compute_recovery(df: pd.DataFrame, baseline_k: float = BASELINE_RECOVERY_K) 
             "baseline_k": float(baseline_k),
             "relative_deviation": round(float(relative_deviation), 6),
             "recovery_fit_rmse": round(rec_rmse, 6),
+            "normalized_rmse": round(normalized_rmse, 6),
         },
     }
 
@@ -418,13 +521,9 @@ def compute_composite_risk(
     c2 = float(np.clip(recovery_confidence, 0.0, 1.0))
     c3 = float(np.clip(consistency_confidence, 0.0, 1.0))
 
-    epsilon = 0.05
-    c1 = max(c1, epsilon)
-    c2 = max(c2, epsilon)
-    c3 = max(c3, epsilon)
-
+    epsilon = 0.01
     total_weight = c1 + c2 + c3
-    final_risk_score = safe_clip(((s1 * c1) + (s2 * c2) + (s3 * c3)) / max(total_weight, EPSILON))
+    final_risk_score = safe_clip(((s1 * c1) + (s2 * c2) + (s3 * c3)) / (total_weight + epsilon))
 
     trend_score = (s1 + s2) / 2.0
     anomaly_score = s3
@@ -445,7 +544,7 @@ def compute_composite_risk(
         "risk_level": risk_level,
         "confidence": round(confidence, 4),
         "calculation": {
-            "final_formula": "((S1*C1)+(S2*C2)+(S3*C3)) / (C1+C2+C3)",
+            "final_formula": "((S1*C1)+(S2*C2)+(S3*C3)) / (C1+C2+C3+epsilon)",
             "confidence_formula": "mean(C1, C2, C3)",
             "epsilon": epsilon,
             "weights": {
