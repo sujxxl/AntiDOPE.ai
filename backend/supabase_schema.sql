@@ -1,10 +1,8 @@
 -- Supabase schema for AntiDOPE
 -- Run in Supabase SQL Editor
 
-create extension if not exists pgcrypto;
-
 create table if not exists public.athletes (
-  id uuid primary key default gen_random_uuid(),
+  id text primary key,
   user_id uuid not null,
   name text not null,
   sport text,
@@ -15,7 +13,7 @@ create table if not exists public.athletes (
 
 create table if not exists public.reports (
   id uuid primary key default gen_random_uuid(),
-  athlete_id uuid not null references public.athletes(id) on delete cascade,
+  athlete_id text not null references public.athletes(id) on delete cascade,
   user_id uuid not null,
   efficiency_score double precision,
   recovery_score double precision,

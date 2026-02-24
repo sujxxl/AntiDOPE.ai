@@ -1,4 +1,5 @@
 import { Athlete, RiskLevel, UploadSession, athletes as seedAthletes } from './athletes';
+import type { BackendAnalysisResponse } from '../services/backend';
 
 const STORAGE_KEY = 'antidope-athletes-v1';
 const ATHLETES_EVENT = 'antidope-athletes-updated';
@@ -366,12 +367,26 @@ export const attachUploadToAthlete = (input: {
     validRows: number;
     invalidRows: number;
     parsedRows: Record<string, unknown>[];
+    analysisResult?: BackendAnalysisResponse;
 }): { athlete: Athlete; session: UploadSession } => {
     const current = getAthletes();
     const nowIso = new Date().toISOString();
     const nowDate = nowIso.split('T')[0];
 
-    const inference = buildInferenceFromDataset(input.parsedRows, input.columns);
+    const localInference = buildInferenceFromDataset(input.parsedRows, input.columns);
+
+    const inference = input.analysisResult
+        ? {
+            ...localInference,
+            score: clamp(Number(input.analysisResult.final_risk_score ?? localInference.score), 0, 100),
+            level: (input.analysisResult.risk_level ?? localInference.level) as RiskLevel,
+            confidence: clamp(Number(input.analysisResult.confidence ?? localInference.confidence), 0, 1),
+            efficiencyIndex: clamp(Number(input.analysisResult.efficiency_index ?? localInference.efficiencyIndex), 0, 100),
+            recoveryPattern: clamp(Number(input.analysisResult.recovery_score ?? localInference.recoveryPattern), 0, 100),
+            consistencyMonitoring: clamp(Number(input.analysisResult.consistency_score ?? localInference.consistencyMonitoring), 0, 100),
+            anomalyProbability: clamp(Number(input.analysisResult.anomaly_component ?? localInference.anomalyProbability * 100) / 100, 0, 1),
+        }
+        : localInference;
 
     const session: UploadSession = {
         sessionId: `SES-${input.athleteId}-${Date.now()}`,
@@ -446,8 +461,20 @@ export const attachUploadToAthlete = (input: {
                     score: inference.score,
                     level: inference.level,
                     contributions: {
-                        trend: Number((inference.efficiencyIndex / 100).toFixed(2)),
-                        anomaly: Number((1 - inference.efficiencyIndex / 100).toFixed(2)),
+                        trend: Number(
+                            (
+                                input.analysisResult
+                                    ? clamp(Number(input.analysisResult.trend_component ?? 0), 0, 100) / 100
+                                    : inference.efficiencyIndex / 100
+                            ).toFixed(2)
+                        ),
+                        anomaly: Number(
+                            (
+                                input.analysisResult
+                                    ? clamp(Number(input.analysisResult.anomaly_component ?? 0), 0, 100) / 100
+                                    : (1 - inference.efficiencyIndex / 100)
+                            ).toFixed(2)
+                        ),
                     },
                 },
             },

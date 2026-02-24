@@ -10,6 +10,8 @@ import CreateAthleteModal from '../components/CreateAthleteModal';
 import { useAthletes } from '../hooks/useAthletes';
 import AlertBanner from '../components/AlertBanner';
 import RiskBadge from '../components/RiskBadge';
+import { analyzeDatasetFile } from '../services/backend';
+import { saveAthleteAndReport } from '../services/supabaseReports';
 
 type ParsedUpload = {
     fileName: string;
@@ -67,6 +69,7 @@ export default function UploadPage() {
     const [isParsing, setIsParsing] = useState(false);
     const [isRunningInference, setIsRunningInference] = useState(false);
     const [uploadPreview, setUploadPreview] = useState<ParsedUpload | null>(null);
+    const [uploadFile, setUploadFile] = useState<File | null>(null);
     const [uploadError, setUploadError] = useState<string | null>(null);
     const [uploadSuccess, setUploadSuccess] = useState<{ session: UploadSession; athlete: Athlete } | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -98,6 +101,7 @@ export default function UploadPage() {
     const handleSelectAthlete = (athlete: Athlete | null) => {
         setSelectedAthlete(athlete);
         setUploadPreview(null);
+        setUploadFile(null);
         setUploadError(null);
         setUploadSuccess(null);
     };
@@ -155,8 +159,10 @@ export default function UploadPage() {
                 }),
                 parsedRows,
             });
+            setUploadFile(file);
         } catch (error) {
             setUploadPreview(null);
+            setUploadFile(null);
             setUploadError(error instanceof Error ? error.message : 'Unable to process this file.');
         } finally {
             setIsParsing(false);
@@ -165,14 +171,14 @@ export default function UploadPage() {
     };
 
     const handleRunInference = async () => {
-        if (!selectedAthlete || !uploadPreview) {
+        if (!selectedAthlete || !uploadPreview || !uploadFile) {
             return;
         }
 
         setIsRunningInference(true);
 
         try {
-            await new Promise((resolve) => setTimeout(resolve, 900));
+            const backendResult = await analyzeDatasetFile(uploadFile);
 
             const result = attachUploadToAthlete({
                 athleteId: selectedAthlete.id,
@@ -182,6 +188,12 @@ export default function UploadPage() {
                 validRows: uploadPreview.validRows,
                 invalidRows: uploadPreview.invalidRows,
                 parsedRows: uploadPreview.parsedRows,
+                analysisResult: backendResult,
+            });
+
+            await saveAthleteAndReport({
+                athlete: result.athlete,
+                session: result.session,
             });
 
             setSelectedAthlete(result.athlete);
