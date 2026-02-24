@@ -8,3 +8,4 @@ coverage/
 !.env.example
 /backend/__pycache__/
 /backend/venv/
+backend\.env.local

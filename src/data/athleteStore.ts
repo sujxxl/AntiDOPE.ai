@@ -1,4 +1,4 @@
-import { Athlete, RiskLevel, UploadSession, athletes as seedAthletes } from './athletes';
+import { Athlete, RiskLevel, UploadSession } from './athletes';
 import type { BackendAnalysisResponse } from '../services/backend';
 
 const STORAGE_KEY = 'antidope-athletes-v1';
@@ -17,8 +17,6 @@ const levelFromScore = (score: number): RiskLevel => {
 };
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
-
-const deepClone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 
 const normalizeFeatureLabel = (label: string) => {
     const normalized = label.toLowerCase();
@@ -73,9 +71,7 @@ export const getAthletes = (): Athlete[] => {
     const stored = localStorage.getItem(STORAGE_KEY);
 
     if (!stored) {
-        const seeded = sanitizeAthleteLabels(deepClone(seedAthletes));
-        persistAthletes(seeded);
-        return seeded;
+        return [];
     }
 
     try {
@@ -84,10 +80,12 @@ export const getAthletes = (): Athlete[] => {
         persistAthletes(sanitized);
         return sanitized;
     } catch {
-        const seeded = sanitizeAthleteLabels(deepClone(seedAthletes));
-        persistAthletes(seeded);
-        return seeded;
+        return [];
     }
+};
+
+export const setAthletesSnapshot = (athletes: Athlete[]) => {
+    persistAthletes(sanitizeAthleteLabels(athletes));
 };
 
 export const subscribeAthletes = (onChange: () => void) => {
@@ -153,7 +151,52 @@ export const createAthlete = (input: {
     return newAthlete;
 };
 
-export const generateAthleteId = () => `A-${Math.floor(100000 + Math.random() * 900000)}`;
+export const generateAthleteId = () => {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        return crypto.randomUUID();
+    }
+
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (char) => {
+        const rand = Math.floor(Math.random() * 16);
+        const value = char === 'x' ? rand : ((rand & 0x3) | 0x8);
+        return value.toString(16);
+    });
+};
+
+export const updateAthleteProfile = (input: {
+    athleteId: string;
+    name: string;
+    sport: string;
+    age: number;
+    gender: Athlete['gender'];
+}): Athlete => {
+    const current = getAthletes();
+    let updatedAthlete: Athlete | null = null;
+
+    const updated = current.map((athlete) => {
+        if (athlete.id !== input.athleteId) {
+            return athlete;
+        }
+
+        const nextAthlete: Athlete = {
+            ...athlete,
+            name: input.name,
+            sport: input.sport,
+            age: input.age,
+            gender: input.gender,
+        };
+
+        updatedAthlete = nextAthlete;
+        return nextAthlete;
+    });
+
+    if (!updatedAthlete) {
+        throw new Error('Athlete not found while updating profile.');
+    }
+
+    persistAthletes(updated);
+    return updatedAthlete;
+};
 
 const unitFromColumnName = (column: string) => {
     const normalized = column.toLowerCase();

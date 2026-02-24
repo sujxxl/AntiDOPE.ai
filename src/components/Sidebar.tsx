@@ -1,14 +1,46 @@
+import { useEffect, useState } from 'react';
 import { BarChart, Home, Search, Upload, User, Users } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
+import { getUserProfileFromSupabase } from '../services/supabaseProfiles';
 
 const navItems = [
   { name: 'Dashboard', icon: Home, href: '/' },
   { name: 'Athletes', icon: Users, href: '/search' },
   { name: 'Reports', icon: BarChart, href: '/reports' },
   { name: 'Upload Data', icon: Upload, href: '/upload' },
+  { name: 'User Profile', icon: User, href: '/profile' },
 ];
 
 export default function Sidebar() {
+  const [displayName, setDisplayName] = useState('');
+  const [displayRole, setDisplayRole] = useState('');
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadProfile = async () => {
+      try {
+        const profile = await getUserProfileFromSupabase();
+        if (!isMounted) {
+          return;
+        }
+
+        setDisplayName(profile?.fullName || profile?.email || 'No user profile');
+        setDisplayRole(profile?.role || 'User');
+      } catch {
+        if (isMounted) {
+          setDisplayName('No user profile');
+          setDisplayRole('User');
+        }
+      }
+    };
+
+    loadProfile();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   return (
     <aside className="w-64 flex-shrink-0 bg-black/20 backdrop-blur-lg border-r border-glass-stroke p-6 flex flex-col">
       <div className="flex items-center gap-2 mb-12">
@@ -36,8 +68,8 @@ export default function Sidebar() {
         <div className="flex items-center gap-3 p-4 bg-glass-highlight rounded-lg border border-glass-stroke">
           <User className="w-8 h-8 p-1.5 bg-stone-700 text-stone-300 rounded-full" />
           <div>
-            <p className="font-semibold text-white">Dr. Anya Sharma</p>
-            <p className="text-xs text-stone-400">Lead Analyst</p>
+            <p className="font-semibold text-white truncate max-w-[150px]">{displayName}</p>
+            <p className="text-xs text-stone-400 truncate max-w-[150px]">{displayRole}</p>
           </div>
         </div>
       </div>

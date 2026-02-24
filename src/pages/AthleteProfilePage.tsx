@@ -1,5 +1,5 @@
 import { useParams, Link } from 'react-router-dom';
-import { Clock, Plus } from 'lucide-react';
+import { Clock, Pencil, Plus } from 'lucide-react';
 import GlassCard from '../components/GlassCard';
 import RiskBadge from '../components/RiskBadge';
 import { useAthletes } from '../hooks/useAthletes';
@@ -26,6 +26,12 @@ export default function AthleteProfilePage() {
           <p className="text-stone-400">ID: {athlete.id} | {athlete.sport}</p>
         </div>
         <div className="flex items-center gap-4">
+          <Link to={`/athlete/${athlete.id}/edit`}>
+            <GlassButton variant="secondary">
+              <Pencil className="w-4 h-4 mr-2" />
+              Edit Profile
+            </GlassButton>
+          </Link>
           <Link to={`/upload?athlete=${athlete.id}`}>
             <GlassButton variant="secondary">
               <Plus className="w-4 h-4 mr-2" />

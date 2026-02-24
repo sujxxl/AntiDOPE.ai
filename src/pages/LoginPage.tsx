@@ -42,7 +42,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center p-8">
       <GlassCard className="w-full max-w-md">
         <div className="text-center mb-8">
-          <motion.div 
+          <motion.div
             initial={{ scale: 0.5, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ type: 'spring', stiffness: 260, damping: 20, delay: 0.2 }}

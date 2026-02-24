@@ -12,7 +12,7 @@ export default function Header({ onLogout, userEmail }: HeaderProps) {
         {/* Search bar can go here */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-stone-400" />
-          <input 
+          <input
             type="text"
             placeholder="Search athletes, reports..."
             className="w-96 bg-glass-highlight border border-transparent hover:border-glass-stroke focus:border-glass-stroke focus:ring-0 focus:outline-none rounded-lg pl-10 pr-4 py-2.5 text-glass-white placeholder:text-stone-400 transition-colors duration-300"

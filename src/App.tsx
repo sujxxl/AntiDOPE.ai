@@ -6,10 +6,12 @@ import MainLayout from './layouts/MainLayout';
 import LoginPage from './pages/LoginPage';
 import Dashboard from './pages/Dashboard';
 import AthleteProfilePage from './pages/AthleteProfilePage';
+import AthleteEditPage from './pages/AthleteEditPage';
 import RiskReportPage from './pages/RiskReportPage';
 import ReportsPage from './pages/ReportsPage';
 import UploadPage from './pages/UploadPage';
 import SearchFilterPage from './pages/SearchFilterPage';
+import UserProfilePage from './pages/UserProfilePage';
 import { hasSupabaseConfig, supabase } from './lib/supabase';
 
 export default function App() {
@@ -70,10 +72,12 @@ export default function App() {
       children: [
         { index: true, element: <Dashboard /> },
         { path: 'athlete/:id', element: <AthleteProfilePage /> },
+        { path: 'athlete/:id/edit', element: <AthleteEditPage /> },
         { path: 'reports', element: <ReportsPage /> },
         { path: 'report/:id', element: <RiskReportPage /> },
         { path: 'upload', element: <UploadPage /> },
         { path: 'search', element: <SearchFilterPage /> },
+        { path: 'profile', element: <UserProfilePage /> },
       ],
     },
   ]);

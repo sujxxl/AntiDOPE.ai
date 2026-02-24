@@ -15,7 +15,7 @@ export default function MainLayout({ onLogout, userEmail }: MainLayoutProps) {
       </div>
       <main className="flex-1 flex flex-col">
         <div className="no-print">
-            <Header onLogout={onLogout} userEmail={userEmail} />
+          <Header onLogout={onLogout} userEmail={userEmail} />
         </div>
         <div className="flex-1 p-8">
           <Outlet />

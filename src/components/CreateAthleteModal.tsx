@@ -18,6 +18,7 @@ interface CreateAthleteModalProps {
 }
 
 export default function CreateAthleteModal({ onClose, onCreate, generateId }: CreateAthleteModalProps) {
+  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   const [name, setName] = useState('');
   const [id, setId] = useState(() => generateId());
   const [age, setAge] = useState('');
@@ -28,7 +29,7 @@ export default function CreateAthleteModal({ onClose, onCreate, generateId }: Cr
   const [baselineRetPct, setBaselineRetPct] = useState('');
 
   const isFormValid = useMemo(() => {
-    return name.trim() && id.trim() && sport.trim() && Number(age) > 0;
+    return name.trim() && uuidPattern.test(id.trim()) && sport.trim() && Number(age) > 0;
   }, [age, id, name, sport]);
 
   const handleSubmit = (event: React.FormEvent) => {
@@ -73,6 +74,9 @@ export default function CreateAthleteModal({ onClose, onCreate, generateId }: Cr
                 <input type="text" value={id} onChange={(event) => setId(event.target.value)} className="w-full bg-white/5 backdrop-blur-lg border border-white/10 rounded-lg px-4 py-3 text-white placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-white/20" />
                 <GlassButton type="button" variant="secondary" onClick={() => setId(generateId())}>Auto</GlassButton>
               </div>
+              {!uuidPattern.test(id.trim()) ? (
+                <p className="text-xs text-risk-high mt-1">Athlete ID must be a valid UUID.</p>
+              ) : null}
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

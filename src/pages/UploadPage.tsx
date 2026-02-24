@@ -11,7 +11,6 @@ import { useAthletes } from '../hooks/useAthletes';
 import AlertBanner from '../components/AlertBanner';
 import RiskBadge from '../components/RiskBadge';
 import { analyzeDatasetFile } from '../services/backend';
-import { saveAthleteAndReport } from '../services/supabaseReports';
 
 type ParsedUpload = {
     fileName: string;
@@ -85,7 +84,7 @@ export default function UploadPage() {
         }
     }, [athletes, presetAthleteId, selectedAthlete]);
 
-    const handleCreateAthlete = (payload: {
+    const handleCreateAthlete = async (payload: {
         name: string;
         id: string;
         age: number;
@@ -93,9 +92,13 @@ export default function UploadPage() {
         gender: Athlete['gender'];
         baselineMetrics?: Athlete['baselineMetrics'];
     }) => {
-        const athlete = createAthlete(payload);
-        setSelectedAthlete(athlete);
-        setIsModalOpen(false);
+        try {
+            const athlete = await createAthlete(payload);
+            setSelectedAthlete(athlete);
+            setIsModalOpen(false);
+        } catch (error) {
+            setUploadError(error instanceof Error ? error.message : 'Unable to create athlete.');
+        }
     };
 
     const handleSelectAthlete = (athlete: Athlete | null) => {
@@ -180,7 +183,7 @@ export default function UploadPage() {
         try {
             const backendResult = await analyzeDatasetFile(uploadFile);
 
-            const result = attachUploadToAthlete({
+            const result = await attachUploadToAthlete({
                 athleteId: selectedAthlete.id,
                 fileName: uploadPreview.fileName,
                 rowCount: uploadPreview.rowCount,
@@ -189,11 +192,6 @@ export default function UploadPage() {
                 invalidRows: uploadPreview.invalidRows,
                 parsedRows: uploadPreview.parsedRows,
                 analysisResult: backendResult,
-            });
-
-            await saveAthleteAndReport({
-                athlete: result.athlete,
-                session: result.session,
             });
 
             setSelectedAthlete(result.athlete);

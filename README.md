@@ -24,6 +24,8 @@ This contains everything you need to run your app locally.
 - Login now uses Supabase Auth email/password (`supabase.auth.signInWithPassword`)
 - Ensure `.env.local` has `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`
 - Create users in Supabase Auth (Email provider enabled) before signing in
+- Athlete edit page updates `public.athletes` in Supabase
+- User profile page reads/writes `public.user_profiles` (and mirrors to auth metadata)
 
 ## Local backend logic test
 
